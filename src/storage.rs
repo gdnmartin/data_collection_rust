@@ -1,19 +1,52 @@
-use crate::metrics::Metrics;
 use std::fs::OpenOptions;
-use std::io::Write;
-use serde_json::json;
+use std::io::{BufReader, Write, BufRead};
+use std::fs::File;
+use std::time::SystemTime;
+use crate::metrics::Metrics;
 
-pub fn save_metrics(timestamp: &str, data: &Metrics) {
-    let json_entry = json!({
-        "timestamp": timestamp,
-        "metrics": data
-    });
+const MAX_AGE_SECONDS: u64 = 60 * 60 * 24 * 2; // 2 días en segundos
+
+
+pub fn save_metrics(metrics: &Metrics) {
+    let json = serde_json::to_string(metrics).unwrap();
 
     let mut file = OpenOptions::new()
         .create(true)
         .append(true)
         .open("metrics.jsonl")
-        .unwrap();
+        .expect("No se pudo abrir o crear el archivo metrics.jsonl");
 
-    writeln!(file, "{}", json_entry).unwrap();
+    writeln!(file, "{}", json).expect("No se pudo escribir en el archivo");
+}
+
+pub fn clean_old_metrics() {
+    let file = File::open("metrics.jsonl").expect("No se pudo abrir el archivo");
+    let reader = BufReader::new(file);
+
+    let mut new_metrics = Vec::new();
+    let now = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_secs();
+
+    // Lee línea por línea y solo guarda los registros recientes
+    for line in reader.lines() {
+        if let Ok(json_line) = line {
+            if let Ok(entry) = serde_json::from_str::<Metrics>(&json_line) {
+                if now - entry.timestamp <= MAX_AGE_SECONDS {
+                    new_metrics.push(entry); // Solo guarda si no ha pasado más de 2 días
+                }
+            }
+        }
+    }
+
+    // Reescribe el archivo con solo los datos recientes
+    let mut file = OpenOptions::new()
+        .create(true)
+        .write(true)
+        .truncate(true)
+        .open("metrics.jsonl")
+        .expect("No se pudo abrir o crear el archivo");
+
+    for metric in new_metrics {
+        let json = serde_json::to_string(&metric).unwrap();
+        writeln!(file, "{}", json).expect("No se pudo escribir en el archivo");
+    }
 }

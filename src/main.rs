@@ -1,36 +1,46 @@
+use std::{env, fs::{File, OpenOptions}, io::{self, Read, Write}, time::{SystemTime, UNIX_EPOCH, Duration}};
+use chrono::Local;
+
 mod metrics;
 mod storage;
 mod report;
 
-use chrono::{Duration, Local};
-use std::{thread, time::Duration as StdDuration};
+const TOTAL_HOURS: u64 = 48;
+const START_FILE: &str = "start_time.txt";
 
-const INTERVAL_MINUTES: i64 = 1;
-const TOTAL_MINUTES: i64 = 60 * 48; // 48 horas
+fn get_or_create_start_time() -> io::Result<SystemTime> {
+    let start_file_path = env::current_dir()?.join(START_FILE);
+
+    if start_file_path.exists() {
+        let mut content = String::new();
+        File::open(&start_file_path)?.read_to_string(&mut content)?;
+        let start_secs = content.trim().parse::<u64>().unwrap_or(0);
+        Ok(UNIX_EPOCH + Duration::from_secs(start_secs))
+    } else {
+        let now = SystemTime::now();
+        let start_secs = now.duration_since(UNIX_EPOCH).map_err(|e| io::Error::new(io::ErrorKind::Other, e))?.as_secs();
+        let mut file = OpenOptions::new().create(true).write(true).open(&start_file_path)?;
+        writeln!(file, "{}", start_secs)?;
+        Ok(now)
+    }
+}
 
 fn main() {
-    println!("Iniciando monitor de métricas del sistema...");
+    let now = SystemTime::now();
+    let start_time = get_or_create_start_time().expect("No se pudo obtener o crear start_time.txt");
 
-    let start_time = Local::now();
-    let end_time = start_time + Duration::minutes(TOTAL_MINUTES);
-    let interval = StdDuration::from_secs((INTERVAL_MINUTES) as u64);
+    let elapsed = now.duration_since(start_time).unwrap_or(Duration::ZERO);
+    let limit = Duration::from_secs(TOTAL_HOURS * 3600);
 
-    while Local::now() < end_time {
+    if elapsed < limit {
         let timestamp = Local::now().to_rfc3339();
-        let data = metrics::collect_metrics();
-        println!("{}: CPU: {:.2}%, Memoria: {}MB de {}MB, Procesos: {}\n",
-            timestamp,
-            data.cpu_usage,
-            (data.memory_used / 1024) / 1024,
-            (data.memory_total / 1024) / 1024,
-            data.process_count
-        );
-        //storage::save_metrics(&timestamp, &data);
-
-        //println!("Datos guardados: {}", timestamp);
-        thread::sleep(interval);
+        let metrics = metrics::collect_metrics();
+        storage::save_metrics(&metrics);  
+        storage::clean_old_metrics();     
+        println!("Métricas guardadas: {}", timestamp);
+    } else {
+        println!("Tiempo completado. Generando reporte...");
+        report::generate_report("metrics.jsonl");
+        println!("Reporte generado.");
     }
-
-    println!("Periodo de monitoreo terminado. Generando gráficas...");
-    report::generate_report("metrics.jsonl");
 }
