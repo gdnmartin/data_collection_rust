@@ -55,7 +55,7 @@ pub fn collect_metrics() -> Metrics {
     let mut sys = System::new_with_specifics(refresh);
     sys.refresh_cpu();
     std::thread::sleep(std::time::Duration::from_secs(1));
-    sys.refresh_cpu(); // ahora el uso es válido
+    sys.refresh_cpu(); 
     sys.refresh_memory();
     sys.refresh_processes();
 
@@ -80,7 +80,6 @@ pub fn collect_metrics() -> Metrics {
 
     let disk = read_diskstats();
 
-    // Agrupar procesos por nombre y sumar sus porcentajes de CPU y memoria
     let mut processes: HashMap<String, ProcessInfo> = HashMap::new();
     for process in sys.processes().values() {
         let name = process.name().to_string();
@@ -100,7 +99,6 @@ pub fn collect_metrics() -> Metrics {
         });
     }
 
-    // Obtener los 5 procesos principales ordenados por su uso de CPU
     let mut top_processes: Vec<_> = processes.into_iter().map(|(_, v)| v).collect();
     top_processes.sort_by(|a, b| b.cpu_percent.partial_cmp(&a.cpu_percent).unwrap());
     top_processes.truncate(5);

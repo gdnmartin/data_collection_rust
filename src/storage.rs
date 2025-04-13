@@ -4,7 +4,7 @@ use std::fs::File;
 use std::time::SystemTime;
 use crate::metrics::Metrics;
 
-const MAX_AGE_SECONDS: u64 = 60 * 60 * 24 * 2; // 2 días en segundos
+const MAX_AGE_SECONDS: u64 = 60 * 60 * 24 * 2;
 
 
 pub fn save_metrics(metrics: &Metrics) {
@@ -26,18 +26,16 @@ pub fn clean_old_metrics() {
     let mut new_metrics = Vec::new();
     let now = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_secs();
 
-    // Lee línea por línea y solo guarda los registros recientes
     for line in reader.lines() {
         if let Ok(json_line) = line {
             if let Ok(entry) = serde_json::from_str::<Metrics>(&json_line) {
                 if now - entry.timestamp <= MAX_AGE_SECONDS {
-                    new_metrics.push(entry); // Solo guarda si no ha pasado más de 2 días
+                    new_metrics.push(entry);
                 }
             }
         }
     }
 
-    // Reescribe el archivo con solo los datos recientes
     let mut file = OpenOptions::new()
         .create(true)
         .write(true)

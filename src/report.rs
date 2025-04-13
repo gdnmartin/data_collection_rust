@@ -8,7 +8,6 @@ pub fn generate_report(path: &str) {
 
     let mut csv_file = File::create("metrics.csv").unwrap();
 
-    // Armar encabezados
     let mut headers: Vec<String> = vec![
         "timestamp".into(),
         "cpu_temperature".into(),
@@ -25,7 +24,7 @@ pub fn generate_report(path: &str) {
         "disk_write_time_ms".into(),
     ];
 
-    let cpu_cores = 8; // Puedes calcularlo dinámicamente si lo prefieres
+    let cpu_cores = 8;
     for i in 0..cpu_cores {
         headers.push(format!("cpu{}_usage", i));
         headers.push(format!("cpu{}_freq", i));
@@ -84,5 +83,5 @@ pub fn generate_report(path: &str) {
         }
     }
 
-    println!("✅ Reporte generado: metrics.csv");
+    println!("Reporte generado: metrics.csv");
 }
