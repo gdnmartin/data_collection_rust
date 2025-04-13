@@ -16,7 +16,7 @@ if [ ! -f "$RUTA_BINARIO" ]; then
 fi
 
 # Crear archivo .service
-echo "🔧 Creando archivo de servicio..."
+echo "Creando archivo de servicio..."
 cat <<EOF | sudo tee /etc/systemd/system/${NOMBRE_SERVICIO}.service > /dev/null
 [Unit]
 Description=Recolector de métricas de sistema en Rust
@@ -31,7 +31,7 @@ Group=${GRUPO}
 EOF
 
 # Crear archivo .timer
-echo "🔧 Creando archivo de timer..."
+echo "Creando archivo de timer..."
 cat <<EOF | sudo tee /etc/systemd/system/${NOMBRE_SERVICIO}.timer > /dev/null
 [Unit]
 Description=Ejecuta el recolector de métricas cada 5 minutos
